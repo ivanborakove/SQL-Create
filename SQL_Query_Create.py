@@ -2,14 +2,16 @@ import pandas as pd
 import easygui as gui
 import sys
 
-def update_table(excel_file):
+def get_user_input():
     table_name = gui.enterbox("Digite o nome da tabela:")
     column_names_str = gui.enterbox("Digite os nomes das colunas (separados por vírgula):")
-    column_names = [col.strip() for col in column_names_str.split(',')]
+    column_names = [col.strip() for col in column_names_str.split(',') if col.strip()]
     if not table_name or not column_names:
         gui.msgbox("Tabela ou colunas não informadas!", "Aviso")
-        return
-    df = pd.read_excel(excel_file)
+        sys.exit()
+    return table_name, column_names
+
+def get_selected_columns(df, column_names):
     sql_queries = []
     for index, row in df.iterrows():
         set_columns = []
@@ -26,13 +28,18 @@ def update_table(excel_file):
         set_str = ', '.join(set_columns)
         sql_query = f"UPDATE {table_name} SET {set_str}"
         sql_queries.append(sql_query)
+    return sql_queries
 
+def show_results(sql_queries):
+    if not sql_queries:
+        gui.msgbox("Nenhum registro selecionado para atualização!", "Aviso")
+        sys.exit()
     gui.textbox("Resultado", "SQL Queries", "\n".join(sql_queries))
     gui.msgbox("UPDATE concluído.", "Mensagem")
 
 # Menu principal
 options = {
-    "UPDATE": update_table,
+    "UPDATE": lambda f: show_results(get_selected_columns(pd.read_excel(f), column_names)),
     "SAIR": sys.exit
 }
 
@@ -44,4 +51,5 @@ while True:
     if not excel_file:
         gui.msgbox("Arquivo não selecionado!", "Aviso")
         continue
+    table_name, column_names = get_user_input()
     options[user_choice](excel_file)
