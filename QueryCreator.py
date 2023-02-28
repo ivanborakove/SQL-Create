@@ -58,24 +58,29 @@ def update_table(excel_file):
                 else:
                     updates_dict[col_name].append(str(value))
 
+    where_clause = gui.enterbox("Digite a cláusula WHERE (ex: 'id=1'):")
+    if not where_clause:
+        gui.msgbox("Cláusula WHERE não informada!", "Aviso")
+        return
+
     for i in range(len(updates_dict[column_names[0]])):
         update_str = build_update_string(column_names, updates_dict, i)
-        sql_query = f"UPDATE {table_name} SET {update_str}"
+        sql_query = f"UPDATE {table_name} SET {update_str} WHERE {where_clause}"
         sql_queries.append(sql_query)
 
     gui.textbox("Resultado", "SQL Queries", "\n".join(sql_queries))
     gui.msgbox("UPDATE concluído.", "Mensagem")
 
 def main_menu():
-    user_choice = gui.buttonbox("Escolha uma opção:", "Menu principal", ["UPDATE", "SAIR"])
-    if not user_choice or user_choice == "SAIR":
-        sys.exit()
-    excel_file = gui.fileopenbox("Selecione o arquivo Excel:")
-    if not excel_file:
-        gui.msgbox("Arquivo não selecionado!", "Aviso")
-        return main_menu
-    update_table(excel_file)
-    return main_menu()
+    while True:
+        user_choice = gui.buttonbox("Escolha uma opção:", "Menu principal", ["UPDATE", "SAIR"])
+        if not user_choice or user_choice == "SAIR":
+            sys.exit()
+        excel_file = gui.fileopenbox("Selecione o arquivo Excel:")
+        if not excel_file:
+            gui.msgbox("Arquivo não selecionado!", "Aviso")
+            continue
+        update_table(excel_file)
 
 if __name__ == "__main__":
     main_menu()
