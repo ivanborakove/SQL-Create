@@ -11,6 +11,7 @@ def update_table(excel_file):
     column_names = [col.strip() for col in column_names.split(',')]
     df = pd.read_excel(excel_file)
     sql_queries = []
+    updates_dict = {col: [] for col in column_names}
     for col_name in column_names:
         msg = f"Selecione as colunas do Excel para buscar os valores para '{col_name}':"
         selected_columns = gui.multchoicebox(msg, "Seleção de colunas", df.columns)
@@ -25,19 +26,22 @@ def update_table(excel_file):
 
         # loop sobre as listas para construir a string de atualização
         for vals in zip(*values):
-            update_str = ""
             for i, sel_col in enumerate(selected_columns):
                 value = vals[i]
                 if pd.isna(value):
-                    update_str += f"{col_name} = NULL"
+                    updates_dict[col_name].append("NULL")
                 elif isinstance(value, str):
-                    update_str += f"{col_name} = '{value}'"
+                    updates_dict[col_name].append(f"'{value}'")
                 else:
-                    update_str += f"{col_name} = {value}"
-                if i < len(selected_columns) - 1:
-                    update_str += ", "
-            sql_query = f"UPDATE {table_name} SET {update_str}"
-            sql_queries.append(sql_query)
+                    updates_dict[col_name].append(str(value))
+
+    # construir as consultas SQL
+    for i in range(len(updates_dict[column_names[0]])):
+        update_str = ""
+        for col_name in column_names:
+            update_str += f"{col_name} = {updates_dict[col_name][i]}, "
+        sql_query = f"UPDATE {table_name} SET {update_str[:-2]}"
+        sql_queries.append(sql_query)
 
     gui.textbox("Resultado", "SQL Queries", "\n".join(sql_queries))
     gui.msgbox("UPDATE concluído.", "Mensagem")
