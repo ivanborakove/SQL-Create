@@ -2,44 +2,49 @@ import pandas as pd
 import easygui as gui
 import sys
 
-def get_user_input():
+def update_table(excel_file):
     table_name = gui.enterbox("Digite o nome da tabela:")
-    column_names_str = gui.enterbox("Digite os nomes das colunas (separados por vírgula):")
-    column_names = [col.strip() for col in column_names_str.split(',') if col.strip()]
+    column_names = gui.enterbox("Digite os nomes das colunas (separados por vírgula):")
     if not table_name or not column_names:
         gui.msgbox("Tabela ou colunas não informadas!", "Aviso")
-        sys.exit()
-    return table_name, column_names
-
-def get_selected_columns(df, column_names):
+        return
+    column_names = [col.strip() for col in column_names.split(',')]
+    df = pd.read_excel(excel_file)
     sql_queries = []
-    for index, row in df.iterrows():
-        set_columns = []
-        for col_name in column_names:
-            while True:
-                msg = f"Selecione as colunas do Excel para buscar o valor para '{col_name}':"
-                selected_columns = gui.multchoicebox(msg, "Seleção de colunas", df.columns)
-                if not selected_columns:
-                    response = gui.msgbox("Selecione pelo menos uma coluna!", "Aviso")
-                else:
-                    sel_col = selected_columns[0]
-                    set_columns.append(f"{col_name} = {row[sel_col]}")
-                    break
-        set_str = ', '.join(set_columns)
-        sql_query = f"UPDATE {table_name} SET {set_str}"
-        sql_queries.append(sql_query)
-    return sql_queries
+    for col_name in column_names:
+        msg = f"Selecione as colunas do Excel para buscar os valores para '{col_name}':"
+        selected_columns = gui.multchoicebox(msg, "Seleção de colunas", df.columns)
+        while not selected_columns:
+            response = gui.msgbox("Selecione pelo menos uma coluna!", "Aviso")
+            selected_columns = gui.multchoicebox(msg, "Seleção de colunas", df.columns)
 
-def show_results(sql_queries):
-    if not sql_queries:
-        gui.msgbox("Nenhum registro selecionado para atualização!", "Aviso")
-        sys.exit()
+        # armazenar os valores de cada coluna em uma lista
+        values = []
+        for sel_col in selected_columns:
+            values.append(df[sel_col].tolist())
+
+        # loop sobre as listas para construir a string de atualização
+        for vals in zip(*values):
+            update_str = ""
+            for i, sel_col in enumerate(selected_columns):
+                value = vals[i]
+                if pd.isna(value):
+                    update_str += f"{col_name} = NULL"
+                elif isinstance(value, str):
+                    update_str += f"{col_name} = '{value}'"
+                else:
+                    update_str += f"{col_name} = {value}"
+                if i < len(selected_columns) - 1:
+                    update_str += ", "
+            sql_query = f"UPDATE {table_name} SET {update_str}"
+            sql_queries.append(sql_query)
+
     gui.textbox("Resultado", "SQL Queries", "\n".join(sql_queries))
     gui.msgbox("UPDATE concluído.", "Mensagem")
 
 # Menu principal
 options = {
-    "UPDATE": lambda f: show_results(get_selected_columns(pd.read_excel(f), column_names)),
+    "UPDATE": update_table,
     "SAIR": sys.exit
 }
 
@@ -51,5 +56,4 @@ while True:
     if not excel_file:
         gui.msgbox("Arquivo não selecionado!", "Aviso")
         continue
-    table_name, column_names = get_user_input()
     options[user_choice](excel_file)
